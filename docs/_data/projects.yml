@@ -1,0 +1,12 @@
+- title: RLVR Pipeline
+  description: The project studies whether larger language models demonstrate superior learning capabilities in mathematical reasoning when trained with RLHF. It replicates the training pipeline proposed in the DeepSeek-R1 paper with different model sizes from the Qwen/2.5 family. The study includes a technical report with the results.
+  tags:
+    - LLMs
+  link_label: Repository
+  url: "https://github.com/Dlb97/RLVR-Pipeline"
+- title: Kubernetes AI Cluster
+  description: Terraform infrastructure for deploying an Amazon EKS cluster optimized for AI/ML workloads with Karpenter for node autoscaling, NVIDIA GPU Operator for GPU support, and KubeRay for distributed computing.
+  tags:
+    - Infrastructure
+  link_label: Repository
+  url: https://github.com/Dlb97/kubernetes_ai_cluster

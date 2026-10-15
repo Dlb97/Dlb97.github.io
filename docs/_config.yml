@@ -1,2 +1,9 @@
-title: "David Lobo"
-theme: jekyll-theme-primer
+title: "Tu nombre"
+markdown: kramdown
+permalink: /posts/:title/
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: log

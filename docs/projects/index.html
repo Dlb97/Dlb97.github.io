@@ -1,0 +1,26 @@
+---
+layout: default
+title: Projects
+permalink: /projects/
+---
+<h1 class="projects-title">Projects</h1>
+<ul class="cards">
+  {% for project in site.data.projects %}
+  <li>
+    <article class="card">
+      <h2 class="card-title">{{ project.title }}</h2>
+      <p class="card-desc">{{ project.description }}</p>
+      <ul class="tags">
+        {% for tag in project.tags %}
+        <li>{{ tag }}</li>
+        {% endfor %}
+      </ul>
+      <div class="card-links">
+        <a class="card-link-primary" href="{{ project.url }}"{% if project.url contains "://" %} rel="noopener" target="_blank"{% endif %}>
+          {{ project.link_label }} <span class="arrow" aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+    </article>
+  </li>
+  {% endfor %}
+</ul>

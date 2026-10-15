@@ -1,0 +1,7 @@
+<nav class="shelf-nav" aria-label="Shelves">
+  <a href="{{ '/posts/' | relative_url }}"{% unless page.tag %} aria-current="page"{% endunless %}>All</a>
+  {% for tag in site.data.tags %}
+  {% assign tag_href = "/posts/tag/" | append: tag.slug | append: "/" %}
+  <a href="{{ tag_href | relative_url }}"{% if page.tag == tag.slug %} aria-current="page"{% endif %}>{{ tag.name }}</a>
+  {% endfor %}
+</nav>

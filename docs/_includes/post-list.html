@@ -1,0 +1,27 @@
+{% assign posts = site.posts | sort: "date" | reverse %}
+{% assign shown = 0 %}
+<ul class="post-list">
+  {% for post in posts %}
+  {% assign visible = 0 %}
+  {% if include.tag %}
+    {% if post.tags contains include.tag %}
+      {% assign visible = 1 %}
+    {% endif %}
+  {% else %}
+    {% assign visible = 1 %}
+  {% endif %}
+  {% if visible == 1 %}
+  {% assign shown = shown | plus: 1 %}
+  <li>
+    <a class="post-row" href="{{ post.url | relative_url }}">
+      <time class="post-date" datetime="{{ post.date | date_to_xmlschema }}">{% include date.html date=post.date %}</time>
+      <h2 class="post-title">{{ post.title }}</h2>
+      <p class="post-desc">{{ post.description }}</p>
+    </a>
+  </li>
+  {% endif %}
+  {% endfor %}
+</ul>
+{% if shown == 0 %}
+<p class="empty-note">Todavía no hay entradas.</p>
+{% endif %}

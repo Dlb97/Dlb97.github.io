@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" id="color-scheme" content="light">
+  <meta name="theme-color" id="theme-color" content="#faf9f5">
+  <script>
+    (function () {
+      var theme = "light";
+      try {
+        var stored = localStorage.getItem("theme");
+        if (stored === "dark" || stored === "light") theme = stored;
+      } catch (e) {}
+      if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+      document.getElementById("color-scheme").setAttribute("content", theme);
+      document.getElementById("theme-color").setAttribute("content", theme === "light" ? "#faf9f5" : "#0b0c0e");
+    })();
+  </script>
+  
+  <title>Projects | David Lobo</title>
+  
+  <meta name="description" content="ML Engineer | AWS Expert">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="sigil" aria-hidden="true">$</span>davidlobo.io</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/">home</a>
+      <a href="/projects/" aria-current="page">projects</a>
+      <a href="/posts/">posts</a>
+      <button type="button" class="theme-toggle" aria-pressed="true" aria-label="Switch to dark mode">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3.2v2.1M12 18.7v2.1M3.2 12h2.1M18.7 12h2.1M5.8 5.8l1.5 1.5M16.7 16.7l1.5 1.5M18.2 5.8l-1.5 1.5M7.3 16.7l-1.5 1.5"/>
+        </svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.2 3.1a7.4 7.4 0 1 0 5.7 12.2A5.8 5.8 0 0 1 15.2 3.1z"/>
+        </svg>
+        <span class="theme-toggle-thumb" aria-hidden="true"></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+  <main id="main">
+    <div class="wrap">
+      <h1 class="projects-title">Projects</h1>
+<ul class="cards">
+  
+  <li>
+    <article class="card">
+      <h2 class="card-title">RLVR Pipeline</h2>
+      <p class="card-desc">The project studies whether larger language models demonstrate superior learning capabilities in mathematical reasoning when trained with RLHF. It replicates the training pipeline proposed in the DeepSeek-R1 paper with different model sizes from the Qwen/2.5 family. The study includes a technical report with the results.</p>
+      <ul class="tags">
+        
+        <li>LLMs</li>
+        
+      </ul>
+      <div class="card-links">
+        <a class="card-link-primary" href="https://github.com/Dlb97/RLVR-Pipeline" rel="noopener" target="_blank">
+          Repository <span class="arrow" aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+    </article>
+  </li>
+  
+  <li>
+    <article class="card">
+      <h2 class="card-title">Kubernetes AI Cluster</h2>
+      <p class="card-desc">Terraform infrastructure for deploying an Amazon EKS cluster optimized for AI/ML workloads with Karpenter for node autoscaling, NVIDIA GPU Operator for GPU support, and KubeRay for distributed computing.</p>
+      <ul class="tags">
+        
+        <li>Infrastructure</li>
+        
+      </ul>
+      <div class="card-links">
+        <a class="card-link-primary" href="https://github.com/Dlb97/kubernetes_ai_cluster" rel="noopener" target="_blank">
+          Repository <span class="arrow" aria-hidden="true">&rarr;</span>
+        </a>
+      </div>
+    </article>
+  </li>
+  
+</ul>
+
+    </div>
+  </main>
+  <footer class="site-footer">
+  <div class="wrap">
+    <span>&copy; 2026 David Lobo</span>
+    <span><a href="mailto:davidlobobellon@gmail.com">davidlobobellon@gmail.com</a></span>
+  </div>
+</footer>
+
+  <script>
+    (function () {
+      var button = document.querySelector(".theme-toggle");
+      if (!button) return;
+
+      function sync(theme) {
+        var light = theme === "light";
+        if (light) document.documentElement.setAttribute("data-theme", "light");
+        else document.documentElement.removeAttribute("data-theme");
+        var scheme = document.getElementById("color-scheme");
+        var color = document.getElementById("theme-color");
+        if (scheme) scheme.setAttribute("content", theme);
+        if (color) color.setAttribute("content", light ? "#faf9f5" : "#0b0c0e");
+        button.setAttribute("aria-pressed", light ? "true" : "false");
+        button.setAttribute("aria-label", light ? "Switch to dark mode" : "Switch to light mode");
+      }
+
+      sync(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+      button.addEventListener("click", function () {
+        var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+        try { localStorage.setItem("theme", next); } catch (e) {}
+        sync(next);
+      });
+    })();
+  </script>
+</body>
+</html>

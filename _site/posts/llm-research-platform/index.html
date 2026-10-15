@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" id="color-scheme" content="light">
+  <meta name="theme-color" id="theme-color" content="#faf9f5">
+  <script>
+    (function () {
+      var theme = "light";
+      try {
+        var stored = localStorage.getItem("theme");
+        if (stored === "dark" || stored === "light") theme = stored;
+      } catch (e) {}
+      if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+      document.getElementById("color-scheme").setAttribute("content", theme);
+      document.getElementById("theme-color").setAttribute("content", theme === "light" ? "#faf9f5" : "#0b0c0e");
+    })();
+  </script>
+  
+  <title>Building a LLM research platform with Amazon EKS, Skypilot and Flyte | David Lobo</title>
+  
+  <meta name="description" content="ML Engineer | AWS Expert">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="sigil" aria-hidden="true">$</span>davidlobo.io</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/">home</a>
+      <a href="/projects/">projects</a>
+      <a href="/posts/" aria-current="page">posts</a>
+      <button type="button" class="theme-toggle" aria-pressed="true" aria-label="Switch to dark mode">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3.2v2.1M12 18.7v2.1M3.2 12h2.1M18.7 12h2.1M5.8 5.8l1.5 1.5M16.7 16.7l1.5 1.5M18.2 5.8l-1.5 1.5M7.3 16.7l-1.5 1.5"/>
+        </svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.2 3.1a7.4 7.4 0 1 0 5.7 12.2A5.8 5.8 0 0 1 15.2 3.1z"/>
+        </svg>
+        <span class="theme-toggle-thumb" aria-hidden="true"></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+  <main id="main">
+    <div class="wrap">
+      <article class="post">
+  <a href="/posts/" class="back-link"><span class="arrow" aria-hidden="true">&larr;</span> all posts</a>
+  <header class="post-header">
+    <time datetime="2026-10-15T00:00:00+02:00">October 15, 2026</time>
+    <h1>Building a LLM research platform with Amazon EKS, Skypilot and Flyte</h1>
+  </header>
+  <div class="post-body">
+    <h2 class="index-title">Index</h2>
+
+<p><strong>I. <a href="#introduction">Introduction</a></strong></p>
+
+<ol>
+  <li>Overview of how LLMs and Diffusion Models have shifted infrastructure requirements to large GPU clusters.</li>
+  <li>Explanation of the pain points faced by each user persona on these large GPU clusters (Researchers and Platform administrators).</li>
+</ol>
+
+<p><strong>II. <a href="#solution-overview">Solution Overview</a></strong></p>
+
+<ol>
+  <li>Description on how Amazon EKS, skypilot and flyte work together to give researchers a simple way to spin up GPU clusters and move from experimentation to productive jobs at scale.</li>
+  <li>Architecture:
+    <ol>
+      <li>Oview of solution architecture.</li>
+      <li>How Amazon EKS and Karpenter provide a scalable backend for GPU workloads.</li>
+      <li>How skypilot eases the creation of GPU clusters across both onprem and cloud based environments.</li>
+      <li>How flyte help researchers define python based workflows.</li>
+    </ol>
+  </li>
+</ol>
+
+<p><strong>III. <a href="#technical-implementation">Technical Implementation</a></strong></p>
+
+<ol>
+  <li>Clone repository and deploy infrastructure as code (IAC).</li>
+  <li>How researchers can use predefined ML Templates to productionalize ML workloads.</li>
+  <li>Show how to easily spin up a GPU experimentaiton cluster with skypilot to iterate on the model development process.</li>
+  <li>Explain how to launch the model training job at scale using flyte.</li>
+  <li>Clean up of IAC.</li>
+</ol>
+
+<hr class="index-rule" />
+
+<h2 id="introduction" class="section-title">I. Intro &amp; Motivation</h2>
+
+<p>The use of LLMs and Diffusion Models has shifted infrastructure requirements towards massive, distributed GPU clusters. Operating this clusters at scale introduces new operational bottlenecks and pain points across data pipelines, compute orchestration, and environment parity. Below is a breakdown of the pain points currently faced by the different personas:</p>
+
+<h3 id="researchers">Researchers</h3>
+
+<ul>
+  <li><strong>Environment and tool drift:</strong> Most companies use both on-premises and cloud environments to train and do inference with their ML models. These environments usually differ on the tools and frameworks leading to researchers wasting days on debugging rather than modeling when they want to port their jobs to another environment.</li>
+  <li><strong>Research to Production Hand-Off:</strong> Moving a model from research into production typically requires handing off experimental code to ML engineers. The heavy code adaptation, optimization, and refactoring needed to make the model production-ready adds significant friction and delays time-to-market.</li>
+  <li><strong>GPU Availability:</strong> Researchers frequently have to check if the required GPU models are available in their environment and how much compute capacity remains.</li>
+  <li><strong>Distributed Scale Complexity:</strong> When scaling up to large clusters, researchers must parallelize jobs, handle checkpointing to avoid losing progress when a GPU randomly fails, and deal with network communication bottlenecks.</li>
+</ul>
+
+<h3 id="platform-admins">Platform Admins</h3>
+
+<ul>
+  <li><strong>Hybrid Data Governance Bottleneck:</strong> Platform Admins struggle to sync and share public or team data across on-premises and cloud clusters while strictly maintaining cross-team privacy boundaries.</li>
+  <li><strong>Multi-Tenant Quota Enforcement:</strong> Enforcing fair GPU allocation across diverse architectures and environments is highly challenging for admins, yet necessary to stop single-user workloads from starving the rest of the organization.</li>
+  <li><strong>Dynamic Scaling &amp; Cost Optimization:</strong> Admins must ensure workloads automatically scale out when needed and shrink immediately upon completion, eliminating expensive idle GPU compute waste.</li>
+</ul>
+
+<p>This blog series explores practical solutions to these challenges. In <strong>Part 1</strong>, we’ll build the foundation of a cloud-based research platform. This part covers infrastructure setup, developer-friendly tools for spinning up GPU clusters, and staightforward workflows for scaling code to production training. <strong>Part 2</strong> will focus on extending this baseline into a secure, multi-tenant platform with team-level data and resource access controls.</p>
+
+<hr />
+
+<h2 id="solution-overview" class="section-title">II. Solution Overview</h2>
+
+<p>The platform is built on four core pillars:</p>
+
+<ol>
+  <li><strong>Amazon Elastic Kubernetes Service (Amazon EKS) as the Control Plane:</strong> Serves as the backend foundation, providing a standard Kubernetes distribution that ensures open-source tools can be reused across environments.</li>
+  <li><strong>SkyPilot for GPU Cluster Management:</strong> Enables researchers to easily provision, manage, and tear down GPU clusters across any cloud provider or on-premises infrastructure using simple commands.</li>
+  <li><strong>Flyte for Workflow Orchestration:</strong> Offers Python-native workflow definitions that integrate with Kubernetes. Combined with pre-built MLOps templates (provided in this post), Flyte reduces code adaptation and accelerates the research-to-production hand-off.</li>
+  <li><strong>Ray as the Distributed Execution Engine:</strong> Powers both SkyPilot and Flyte under the hood. Whenever a SkyPilot cluster is spun up or a Flyte workflow is executed, a RayJob handles the underlying distributed compute.</li>
+</ol>
+
+<p>Beyond the four core pillars, the platform relies on several key supporting components:</p>
+
+<ul>
+  <li><strong>Karpenter:</strong> Handles autoscaling by dynamically provisioning compute nodes on demand and terminating idle instances to optimize cost.</li>
+  <li><strong>NVIDIA GPU Operator:</strong> Automates GPU management, including driver installation, node labeling for GPU architectures, and health monitoring.</li>
+  <li><strong>KubeRay:</strong> Simplifies distributed compute management by automating the deployment, scaling, and lifecycle of Ray clusters on Kubernetes.</li>
+  <li><strong>AWS EFS CSI Driver:</strong> Enables persistent, shared storage by allowing Kubernetes pods to mount Amazon Elastic File System (EFS) volumes across nodes.</li>
+</ul>
+
+<h3 id="how-it-all-comes-together-an-end-to-end-walkthrough">How It All Comes Together: An End-to-End Walkthrough</h3>
+
+<p>To see these tools in action, consider a typical workflow: a researcher fine-tuning an LLM using Reinforcement Learning from Human Feedback (RLHF).</p>
+
+<h4 id="phase-1-cluster-provisioning--autoscaling">Phase 1: Cluster Provisioning &amp; Autoscaling</h4>
+
+<ol>
+  <li><strong>Job Request:</strong> The researcher submits a YAML cluster definition via the sky CLI, which sends the request to the SkyPilot API server running on Kubernetes.</li>
+  <li><strong>Job Definition:</strong> The SkyPilot API processes the request and creates a RayJob specifying the required resources.</li>
+  <li><strong>Dynamic Infrastructure Scaling:</strong> The RayJob initializes a head pod. If resources are insufficient, the pod enters a Pending state. Karpenter detects the pending pod, provisions a matching EC2 node from its node pools, and scales out the cluster.</li>
+  <li><strong>Hardware Initialization:</strong> Once the node is online, the NVIDIA GPU Operator automatically installs the required NVIDIA drivers and labels the node with its GPU type and capacity.</li>
+  <li><strong>Workload Scheduling:</strong> Kubernetes schedules the RayJob head pod onto the new node. Worker pods go through this exact same automated provisioning process as the job scales out.</li>
+</ol>
+
+<h4 id="phase-2-experimentation--model-iteration">Phase 2: Experimentation &amp; Model Iteration</h4>
+
+<ol>
+  <li><strong>Rapid Prototyping:</strong> Using the standardized MLOps template structure, the researcher writes the RLHF fine-tuning logic in PyTorch and configures the distributed strategy with Ray.</li>
+  <li><strong>Execution &amp; Cleanup:</strong> They run small-scale experimental jobs on the cluster. Once a promising candidate model is identified, the researcher tears down the ephemeral SkyPilot cluster to free up resources.</li>
+</ol>
+
+<h4 id="phase-3-production-workflow-execution">Phase 3: Production Workflow Execution</h4>
+
+<ol>
+  <li><strong>Workflow Packaging:</strong> To scale up the finalized job, the researcher populates the Flyte MLOps template with their Python classes.</li>
+  <li><strong>Production Orchestration:</strong> Triggering the Flyte workflow spins up a new RayJob, with Karpenter seamlessly handling the underlying autoscaling once again.</li>
+</ol>
+
+<hr />
+
+<h2 id="technical-implementation" class="section-title">III. Technical Implementation</h2>
+
+<p>In this section, we will deploy the Infrastructure as Code (IaC) and walk through the MLOps template. Before running the IaC deployment, let’s examine the network architecture:</p>
+
+<p><img src="/assets/images/network-architecture.png" alt="Network architecture" /></p>
+
+<p>As highlighted earlier, the platform is hosted on Amazon EKS within a VPC spanning two Availability Zones (AZs) across four subnets:</p>
+
+<ul>
+  <li><strong>Public Subnets:</strong> Two subnets route internet traffic directly through an Internet Gateway and host NAT Gateways for outbound access. They also host an internet-facing Network Load Balancer (NLB), which acts as the main entry point for researchers interacting with SkyPilot and Flyte.</li>
+  <li><strong>Private Subnets:</strong> Two subnets host the Amazon EKS worker nodes, routing outbound internet traffic securely through the NAT Gateways in the public subnets.</li>
+</ul>
+
+<p><strong>Traffic Ingress &amp; Routing:</strong> The Network Load Balancer targets a Kubernetes NGINX Ingress Controller running inside the cluster. While the NLB acts as the entry point, the NGINX Ingress handles application-level routing, directing incoming requests to their corresponding services (such as SkyPilot or Flyte) based on the request path and host headers.</p>
+
+<p><strong>TLS &amp; Access Configuration:</strong> The NLB uses Server Name Indication (SNI) with two self-signed certificates managed via AWS Certificate Manager (ACM), eliminating the need to purchase a domain name (local <code class="language-plaintext highlighter-rouge">/etc/hosts</code> edits are required). To avoid the extra cost of a bastion host, the EKS cluster endpoint is configured for public and private access, secured via IAM permissions.</p>
+
+<h3 id="31-deployment-steps">3.1 Deployment Steps</h3>
+
+<p><strong>1. Clone the Repository:</strong> Clone the project repository and navigate into the IaC directory:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone &lt;URL&gt; ./research_platform
+<span class="nb">cd</span> ./research_platform/Kubernetes-GPU-Cluster
+</code></pre></div></div>
+
+<p><em>Note: The repository contains two directories: <code class="language-plaintext highlighter-rouge">/Kubernetes-GPU-Cluster</code> (IaC and <code class="language-plaintext highlighter-rouge">/llm-template</code> (MLOps template).</em></p>
+
+<p><strong>2. Create the SkyPilot Authentication Secret:</strong> Generate a basic authentication secret and store it in AWS Secrets Manager. Be sure to replace <code class="language-plaintext highlighter-rouge">&lt;username&gt;</code>, <code class="language-plaintext highlighter-rouge">&lt;password&gt;</code>, and <code class="language-plaintext highlighter-rouge">&lt;project_name&gt;</code> with your own values:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">WEB_USERNAME</span><span class="o">=</span>&lt;username&gt;
+<span class="nv">WEB_PASSWORD</span><span class="o">=</span>&lt;password&gt;
+<span class="nv">AUTH_STRING</span><span class="o">=</span><span class="si">$(</span>htpasswd <span class="nt">-nb</span> <span class="s2">"</span><span class="nv">$WEB_USERNAME</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$WEB_PASSWORD</span><span class="s2">"</span><span class="si">)</span>
+aws secretsmanager create-secret <span class="se">\</span>
+  <span class="nt">--name</span> <span class="s2">"&lt;project_name&gt;/skypilot-basic-auth"</span> <span class="se">\</span>
+  <span class="nt">--secret-string</span> <span class="s2">"</span><span class="nv">$AUTH_STRING</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p><strong>3. Configure Terraform Variables:</strong> Copy <code class="language-plaintext highlighter-rouge">envs/main/main.tfvars.example</code> to <code class="language-plaintext highlighter-rouge">envs/main/main.tfvars</code> and update the values. Ensure <code class="language-plaintext highlighter-rouge">project_name</code> matches the value used in Step 2:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cp </span>envs/main/main.tfvars.example envs/main/main.tfvars
+<span class="c"># Edit envs/main/main.tfvars with your configuration</span>
+</code></pre></div></div>
+
+<p><strong>4. Initialize and Plan Infrastructure:</strong> Initialize Terraform and generate an execution plan to preview the resources to be deployed:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform init
+terraform plan <span class="nt">-var-file</span><span class="o">=</span>envs/main/main.tfvars
+</code></pre></div></div>
+
+<p><strong>5. Provision the Resources:</strong> Apply the Terraform configuration to deploy the infrastructure:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform apply <span class="nt">-var-file</span><span class="o">=</span>envs/main/main.tfvars
+</code></pre></div></div>
+
+<p><strong>6. Retrieve the Load Balancer Details:</strong> Fetch the DNS name for the deployed Load Balancer using its ARN (replace <code class="language-plaintext highlighter-rouge">&lt;load_balancer_arn&gt;</code> with your actual ARN):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aws elbv2 describe-load-balancers <span class="se">\</span>
+  <span class="nt">--region</span> us-east-1 <span class="se">\</span>
+  <span class="nt">--load-balancer-arns</span> <span class="s2">"&lt;load_balancer_arn&gt;"</span> | <span class="nb">grep </span>DNSName
+</code></pre></div></div>
+
+<p>Next, resolve the DNS name to retrieve the Load Balancer’s public IP (replace <code class="language-plaintext highlighter-rouge">&lt;DNSName&gt;</code> with the output from above):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nslookup &lt;DNSName&gt;
+</code></pre></div></div>
+
+<p><strong>6. Map Local DNS Hosts:</strong> Add two host entries to your local <code class="language-plaintext highlighter-rouge">/etc/hosts</code> file mapping to one of the resolved Load Balancer IP addresses. This routes traffic locally without needing a registered domain name:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>vim /etc/hosts
+</code></pre></div></div>
+
+<p>Add the following lines (replacing <code class="language-plaintext highlighter-rouge">&lt;load_balancer_ip_address&gt;</code> with your resolved IP):</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;load_balancer_ip_address&gt; hpc_clusters.internal
+&lt;load_balancer_ip_address&gt; workflows.internal
+</code></pre></div></div>
+
+<p><strong>7. Access the Web Interfaces:</strong> Open the platform services in your browser:</p>
+
+<ul>
+  <li><strong>SkyPilot UI:</strong> https://hpc_clusters.internal</li>
+  <li><strong>Flyte Console:</strong> https://workflows.internal/console</li>
+</ul>
+
+<p><em>Note: Since the platform uses self-signed TLS certificates, your browser will display a security warning. You can safely bypass the warning to proceed to the interfaces.</em></p>
+
+<h3 id="31-working-with-the-mlos-template">3.1 Working with the MLOs template</h3>
+
+<p>The MLOps template help researchers experiment and productionize LLM training without worrying about GPU management and scaling.</p>
+
+<h4 id="repository-layout">Repository Layout</h4>
+
+<p>The repository is organized under the <code class="language-plaintext highlighter-rouge">src/</code> directory as follows:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">docker_image/</code> — Dockerfile used to build the container image for running Flyte workflows.</li>
+  <li><code class="language-plaintext highlighter-rouge">experimentation/</code> — SkyPilot configuration files to spin up interactive GPU clusters and iterate on model development.</li>
+  <li><code class="language-plaintext highlighter-rouge">model/</code> — The core model implementation (built with PyTorch).</li>
+  <li><code class="language-plaintext highlighter-rouge">pipeline/</code> — Flyte workflow definitions for end-to-end model training and evaluation.</li>
+</ul>
+
+<h4 id="prerequisites">Prerequisites</h4>
+
+<p><strong>1. Kubernetes Infrastructure</strong></p>
+
+<p>Ensure you have access to a running Kubernetes cluster pre-configured with the required control plane components (SkyPilot and Flyte API servers, GPU node pools, and TLS certificates).</p>
+
+<p><strong>2. Environment Setup (uv):</strong> Install uv to manage Python packages:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl <span class="nt">-LsSf</span> https://astral.sh/uv/install.sh | sh
+</code></pre></div></div>
+
+<p>Create and activate a virtual environment (Python 3.10 to 3.12 supported), then sync the project dependencies:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>uv venv <span class="nt">--python</span> 3.10
+<span class="nb">source</span> .venv/bin/activate
+uv <span class="nb">sync</span>
+</code></pre></div></div>
+
+<p><strong>3. Container Registry (Amazon ECR):</strong> Set your target AWS region and account ID as environment variables:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">export </span><span class="nv">AWS_REGION</span><span class="o">=</span>us-east-1
+<span class="nb">export </span><span class="nv">AWS_ACCOUNT_ID</span><span class="o">=</span>&lt;123456789012&gt;
+</code></pre></div></div>
+
+<p>Create the ECR repository to host your pipeline image:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aws ecr create-repository <span class="se">\</span>
+  <span class="nt">--repository-name</span> llm-pipeline <span class="se">\</span>
+  <span class="nt">--region</span> <span class="nv">$AWS_REGION</span>
+</code></pre></div></div>
+
+<p>Authenticate Docker with your ECR registry:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aws ecr get-login-password <span class="nt">--region</span> <span class="nv">$AWS_REGION</span> | <span class="se">\</span>
+docker login <span class="nt">--username</span> AWS <span class="nt">--password-stdin</span> <span class="se">\</span>
+<span class="nv">$AWS_ACCOUNT_ID</span>.dkr.ecr.<span class="nv">$AWS_REGION</span>.amazonaws.com
+</code></pre></div></div>
+
+<p><strong>4. Build and Push the Container Image:</strong> Build the workflow container for x86_64 architectures and push it to ECR:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker build <span class="nt">--platform</span> linux/amd64 <span class="nt">-t</span> <span class="se">\</span>
+<span class="nv">$AWS_ACCOUNT_ID</span>.dkr.ecr.<span class="nv">$AWS_REGION</span>.amazonaws.com/llm-pipeline:latest <span class="nb">.</span>
+docker push <span class="nv">$AWS_ACCOUNT_ID</span>.dkr.ecr.<span class="nv">$AWS_REGION</span>.amazonaws.com/llm-pipeline:latest
+</code></pre></div></div>
+
+<p><strong>5. SkyPilot and Flyte Client Configuration:</strong> Configure your local CLI clients to communicate with the cluster services.</p>
+
+<p><strong>SkyPilot Configuration (<code class="language-plaintext highlighter-rouge">~/.sky/config.yaml</code>):</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;</span> ~/.sky/config.yaml <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+api_server:
+  endpoint: https://hpc_clusters.internal
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<p><strong>Flyte Configuration (<code class="language-plaintext highlighter-rouge">~/.flyte/config.yaml</code>):</strong></p>
+
+<p>Update <code class="language-plaintext highlighter-rouge">caCertFilePath</code> to point to the local path of your <code class="language-plaintext highlighter-rouge">combined-ca.crt</code> file (provisioned in Step 1).</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;</span> ~/.flyte/config.yaml <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+admin:
+  endpoint: dns:///workflows.internal:443
+  insecure: false
+  caCertFilePath: /Kubernetes-GPU-Cluster/modules/certificates/combined-ca.crt
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<p><strong>Trust Self-Signed Certificates:</strong> Configure Python and CLI utilities (<code class="language-plaintext highlighter-rouge">sky</code>, <code class="language-plaintext highlighter-rouge">pyflyte</code>) to trust the self-signed certificates by updating your environment variables (replace <code class="language-plaintext highlighter-rouge">CERT_DIR</code> with your local path):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&gt;&gt;</span> ~/.zshrc <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+export CERT_DIR="/Kubernetes-GPU-Cluster/modules/certificates"
+export REQUESTS_CA_BUNDLE="</span><span class="nv">$CERT_DIR</span><span class="sh">/combined-ca.crt"
+export SSL_CERT_FILE="</span><span class="nv">$CERT_DIR</span><span class="sh">/combined-ca.crt"
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> ~/.zshrc
+</code></pre></div></div>
+
+<h4 id="usage-guide">Usage Guide</h4>
+
+<h5 id="phase-1-interactive-model-development">Phase 1: Interactive Model Development</h5>
+
+<p>During this phase, researchers iterate rapidly on model code using an ephemeral, dedicated GPU cluster managed by SkyPilot.</p>
+
+<p><strong>1. Activate the Virtual Environment</strong></p>
+
+<p>From the repository root:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">source</span> .venv/bin/activate
+</code></pre></div></div>
+
+<p><strong>2. Authenticate with the SkyPilot API Server</strong></p>
+
+<p>Log in using the basic authentication credentials configured during infrastructure deployment:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sky api login <span class="nt">-e</span> <span class="s2">"https://&lt;SECRET_VALUE&gt;@hpc_clusters.internal"</span>
+</code></pre></div></div>
+
+<p><strong>3. Provision the Experimentation Cluster</strong></p>
+
+<p>Provision a dedicated GPU cluster (defined in <code class="language-plaintext highlighter-rouge">hpc_cluster.yaml</code> as 4x NVIDIA T4 GPUs on a single node):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sky launch <span class="nt">-c</span> hpc <span class="nt">-d</span> src/experimentation/hpc_cluster.yaml
+</code></pre></div></div>
+
+<p><em>Wait for SkyPilot and Karpenter to finish node provisioning.</em></p>
+
+<p><strong>4. Execute Experimental Training Runs</strong></p>
+
+<p>Modify model code in <code class="language-plaintext highlighter-rouge">src/model/</code> and execute test runs directly on the remote cluster:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sky <span class="nb">exec</span> <span class="nt">-c</span> hpc src/experimentation/train.yaml
+</code></pre></div></div>
+
+<p><em>(Note: <code class="language-plaintext highlighter-rouge">train.yaml</code> executes <code class="language-plaintext highlighter-rouge">src/model/model.py</code> across the cluster).</em></p>
+
+<h5 id="phase-2-production-scale-training-pipeline">Phase 2: Production Scale Training Pipeline</h5>
+
+<p>Once model code is validated, transition to Flyte for scalable, orchestrated training and evaluation.</p>
+
+<p><strong>1. Configure GPU Resource Scaling</strong></p>
+
+<p>Define the target GPU count in <code class="language-plaintext highlighter-rouge">src/pipeline/config.py</code>. This setting is consumed by <code class="language-plaintext highlighter-rouge">src/pipeline/utils.py</code> to configure the dynamic RayJob submitted to Kubernetes.</p>
+
+<p><strong>2. Initialize the Flyte Project</strong></p>
+
+<p>Create the Flyte project namespace.</p>
+
+<p><em>Note: Do not modify the project <code class="language-plaintext highlighter-rouge">--id</code>, as it binds directly to pre-configured Kubernetes namespaces, persistent volumes (PV), and PVC claims.</em></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>flytectl create project <span class="se">\</span>
+  <span class="nt">--id</span> llm-pipeline <span class="se">\</span>
+  <span class="nt">--name</span> <span class="s2">"LLM Pipeline"</span> <span class="se">\</span>
+  <span class="nt">--description</span> <span class="s2">"MLOps pipeline for production LLM training"</span>
+</code></pre></div></div>
+
+<p><strong>3. Submit the Production Flyte Workflow</strong></p>
+
+<p>Trigger remote workflow execution in the development domain:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pyflyte run <span class="nt">--remote</span> <span class="se">\</span>
+  <span class="nt">--project</span> llm-pipeline <span class="se">\</span>
+  <span class="nt">--domain</span> development <span class="se">\</span>
+  ./src/pipeline/pipeline.py pipeline
+</code></pre></div></div>
+
+<h3 id="32-deletion-of-resources">3.2 Deletion of Resources</h3>
+
+<p>When the platform is no longer needed, tear it down to avoid ongoing GPU costs:</p>
+
+<p>Delete the content of the s3 bucket. Replace with your AWS Account Id:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aws s3 <span class="nb">rm </span>s3://&lt;account_id&gt;-flyte-terraform-data <span class="nt">--recursive</span>
+aws s3 <span class="nb">rm </span>s3://&lt;account_id&gt;-flyte-terraform-data <span class="nt">--recursive</span>
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>terraform destroy
+</code></pre></div></div>
+
+<p>Terraform does not manage the <code class="language-plaintext highlighter-rouge">/etc/hosts</code> entries added in step 6 — remove <code class="language-plaintext highlighter-rouge">hpc_clusters.internal</code> and <code class="language-plaintext highlighter-rouge">workflows.internal</code> manually.</p>
+
+<p>We covered the journey to set up the foundations for a cloud-based GPU platform on AWS EKS with SkyPilot and Flyte to executing dynamic, auto-scaling LLM training jobs.</p>
+
+<p><strong>Want to see Part 2?</strong> In the next post, I plan to dive into <strong>multi-tenancy, team-level data segregation, compute isolated namespaces, and seamless SSO (Single Sign-On) integration.</strong></p>
+
+<p>If you’d like me to write part 2, <strong>let me know by liking this post or dropping your feedback in the comments below!</strong> I’ll be monitoring interest to decide whether to publish the next deep dive.</p>
+
+  </div>
+</article>
+
+    </div>
+  </main>
+  <footer class="site-footer">
+  <div class="wrap">
+    <span>&copy; 2026 David Lobo</span>
+    <span><a href="mailto:davidlobobellon@gmail.com">davidlobobellon@gmail.com</a></span>
+  </div>
+</footer>
+
+  <script>
+    (function () {
+      var button = document.querySelector(".theme-toggle");
+      if (!button) return;
+
+      function sync(theme) {
+        var light = theme === "light";
+        if (light) document.documentElement.setAttribute("data-theme", "light");
+        else document.documentElement.removeAttribute("data-theme");
+        var scheme = document.getElementById("color-scheme");
+        var color = document.getElementById("theme-color");
+        if (scheme) scheme.setAttribute("content", theme);
+        if (color) color.setAttribute("content", light ? "#faf9f5" : "#0b0c0e");
+        button.setAttribute("aria-pressed", light ? "true" : "false");
+        button.setAttribute("aria-label", light ? "Switch to dark mode" : "Switch to light mode");
+      }
+
+      sync(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+      button.addEventListener("click", function () {
+        var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+        try { localStorage.setItem("theme", next); } catch (e) {}
+        sync(next);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+name: "David Lobo"
+role: "ML Engineer | AWS Expert"
+bio: "My main interest is where the science of LLM **pre‑training** and **post‑training** meets the **engineering** that makes it possible at scale."
+brand: "davidlobo.io"
+email: "davidlobobellon@gmail.com"
+shelf_desc: "A collection of posts of my interest. If you'd like me to explore one in particular, send me an email. Opinions and words are my own."
+links:
+  - label: GitHub
+    handle: /Dlb97
+    url: https://github.com/Dlb97
+  - label: LinkedIn
+    handle: /davidlobobellon
+    url: https://www.linkedin.com/in/davidlobobellon/
+  - label: davidlobobellon@gmail.com
+    url: mailto:davidlobobellon@gmail.com

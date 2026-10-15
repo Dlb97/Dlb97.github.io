@@ -1,0 +1,19 @@
+---
+layout: default
+permalink: /
+---
+<section class="hero">
+  <h1 class="hero-name">{{ site.data.profile.name }}</h1>
+  <p class="hero-role">{{ site.data.profile.role }}</p>
+  <div class="hero-bio">{{ site.data.profile.bio | markdownify }}</div>
+  <ul class="links">
+    {% for link in site.data.profile.links %}
+    <li>
+      <a href="{{ link.url }}"{% if link.url contains "://" %} rel="me noopener" target="_blank"{% endif %}>
+        {{ link.label }}
+        {% if link.handle %}<span class="handle">{{ link.handle }}</span>{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
