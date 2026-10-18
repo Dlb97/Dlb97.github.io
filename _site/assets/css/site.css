@@ -757,6 +757,10 @@ html[data-theme="light"] .theme-toggle-thumb {
   scroll-margin-top: calc(var(--header-h) + var(--sp-md));
 }
 
+html:not([data-theme="light"]) .post-body :is(h2, h3) {
+  color: var(--accent);
+}
+
 .post-body :is(ul, ol) {
   padding-left: 1.25rem;
   margin: 0 0 var(--sp-md);

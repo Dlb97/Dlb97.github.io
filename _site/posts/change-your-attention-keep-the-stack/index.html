@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" id="color-scheme" content="light">
+  <meta name="theme-color" id="theme-color" content="#faf9f5">
+  <script>
+    (function () {
+      var theme = "light";
+      try {
+        var stored = localStorage.getItem("theme");
+        if (stored === "dark" || stored === "light") theme = stored;
+      } catch (e) {}
+      if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
+      document.getElementById("color-scheme").setAttribute("content", theme);
+      document.getElementById("theme-color").setAttribute("content", theme === "light" ? "#faf9f5" : "#0b0c0e");
+    })();
+  </script>
+  
+  <title>Change your attention, keep the stack | David Lobo</title>
+  
+  <meta name="description" content="ML Engineer | AWS Expert">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="sigil" aria-hidden="true">$</span>davidlobo.io</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/">home</a>
+      <a href="/projects/">projects</a>
+      <a href="/posts/" aria-current="page">posts</a>
+      <button type="button" class="theme-toggle" aria-pressed="true" aria-label="Switch to dark mode">
+        <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3.2v2.1M12 18.7v2.1M3.2 12h2.1M18.7 12h2.1M5.8 5.8l1.5 1.5M16.7 16.7l1.5 1.5M18.2 5.8l-1.5 1.5M7.3 16.7l-1.5 1.5"/>
+        </svg>
+        <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.2 3.1a7.4 7.4 0 1 0 5.7 12.2A5.8 5.8 0 0 1 15.2 3.1z"/>
+        </svg>
+        <span class="theme-toggle-thumb" aria-hidden="true"></span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+  <main id="main">
+    <div class="wrap">
+      <article class="post">
+  <a href="/posts/" class="back-link"><span class="arrow" aria-hidden="true">&larr;</span> all posts</a>
+  <header class="post-header">
+    <time datetime="2026-10-18T00:00:00+02:00">October 18, 2026</time>
+    <h1>Change your attention, keep the stack</h1>
+  </header>
+  <div class="post-body">
+    <p>During recent years, many of the advances in LLM architecture have come from modifying the attention mechanism. Optimizations like Multi-Query Attention, Grouped-Query Attention (GQA), or Multi-head Latent Attention (MLA) reduce the memory consumption of LLMs, making them faster and capable of dealing with longer contexts. Changing the attention formula is simple. Training the modified LLM in a performant manner is hard, and that is the gap this post is about.</p>
+
+<h2 id="what-is-megatron-and-why-it-matters">What is Megatron and why it matters</h2>
+
+<p><img src="/assets/images/megatron.png" alt="Megatron" /></p>
+
+<p>Megatron-Core is a common library for training LLMs at scale. It already implements 3D parallelism across GPUs, and it is used for both pre-training and post-training.</p>
+
+<p>You keep that parallel layout and replace one building block. That is why it matters here: a custom attention module can use the parallel training Megatron-Core already has instead of reimplementing it from scratch.</p>
+
+<h2 id="how-megatron-defines-attention">How Megatron defines attention</h2>
+
+<p>Megatron-Core builds each layer out of modules and submodules. A transformer layer is a <code class="language-plaintext highlighter-rouge">TransformerLayer</code>, and <code class="language-plaintext highlighter-rouge">TransformerLayerSubmodules</code> lists its components, such as self-attention and the MLP.</p>
+
+<p>Megatron assigns a class to each of those modules through a spec. In <code class="language-plaintext highlighter-rouge">examples/run_simple_mcore_train_loop.py</code>, <code class="language-plaintext highlighter-rouge">GPTModel</code> receives the Transformer layer spec like this:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">gpt_model</span> <span class="o">=</span> <span class="n">GPTModel</span><span class="p">(</span>
+    <span class="n">config</span><span class="o">=</span><span class="n">transformer_config</span><span class="p">,</span>
+    <span class="n">transformer_layer_spec</span><span class="o">=</span><span class="n">get_gpt_layer_local_spec</span><span class="p">(),</span>
+    <span class="n">vocab_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">max_sequence_length</span><span class="o">=</span><span class="n">_SEQUENCE_LENGTH</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">megatron/core/models/gpt/gpt_layer_specs.py</code>:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_gpt_layer_local_spec</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ModuleSpec</span><span class="p">:</span>
+    <span class="s">"""Use this spec for an implementation using only modules in Megatron-Core."""</span>
+    <span class="k">return</span> <span class="n">ModuleSpec</span><span class="p">(</span>
+        <span class="n">module</span><span class="o">=</span><span class="n">TransformerLayer</span><span class="p">,</span> <span class="n">submodules</span><span class="o">=</span><span class="n">get_gpt_layer_local_submodules</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="p">)</span>
+</code></pre></div></div>
+
+<p>The attention mechanism is split in the same way. <code class="language-plaintext highlighter-rouge">SelfAttention</code> is the module and <code class="language-plaintext highlighter-rouge">SelfAttentionSubmodules</code> lists its subcomponents:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">@</span><span class="n">dataclass</span>
+<span class="k">class</span> <span class="nc">SelfAttentionSubmodules</span><span class="p">:</span>
+    <span class="n">linear_qkv</span><span class="p">:</span> <span class="n">LinearQkvBuilder</span>
+    <span class="n">core_attention</span><span class="p">:</span> <span class="n">CoreAttentionBuilder</span>
+    <span class="n">linear_proj</span><span class="p">:</span> <span class="n">LinearProjBuilder</span>
+    <span class="n">q_layernorm</span><span class="p">:</span> <span class="n">LayerNormBuilder</span> <span class="o">|</span> <span class="bp">None</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">k_layernorm</span><span class="p">:</span> <span class="n">LayerNormBuilder</span> <span class="o">|</span> <span class="bp">None</span> <span class="o">=</span> <span class="bp">None</span>
+</code></pre></div></div>
+
+<p>Within <code class="language-plaintext highlighter-rouge">SelfAttentionSubmodules</code>, <code class="language-plaintext highlighter-rouge">core_attention</code> is the module that runs the attention formula. In the default spec its class is <code class="language-plaintext highlighter-rouge">DotProductAttention</code>. To use your own attention formula instead, set that field to your implementation:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">spec</span> <span class="o">=</span> <span class="n">get_gpt_layer_local_spec</span><span class="p">()</span>
+<span class="n">spec</span><span class="p">.</span><span class="n">submodules</span><span class="p">.</span><span class="n">self_attention</span><span class="p">.</span><span class="n">submodules</span><span class="p">.</span><span class="n">core_attention</span> <span class="o">=</span> <span class="n">CustomAttention</span>
+</code></pre></div></div>
+
+<h2 id="implementing-differential-transformer-in-megatron">Implementing Differential Transformer in Megatron</h2>
+
+<p><img src="/assets/images/diff-attention.png" alt="Differential attention" /></p>
+
+<p>Standard attention overallocates weight to irrelevant context. Differential attention, introduced by <a href="https://arxiv.org/abs/2410.05258">Ye et al.</a>, tries to cancel noise and amplify the weight assigned to the relevant context by subtracting two separate softmax attention maps.</p>
+
+<p>The paper writes that difference like this:</p>
+
+<p><img src="/assets/images/diff-attention-formula.png" alt="Differential attention formula" /></p>
+
+<p><a href="https://github.com/Dlb97/Differential-Attention-Megatron">This script</a> implements Differential Attention as a MegatronModule and assigns it to <code class="language-plaintext highlighter-rouge">core_attention</code>.</p>
+
+<p>The lambda vectors and the RMSNorm weight are copied whole on every tensor-parallel rank.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="bp">self</span><span class="p">.</span><span class="n">lambda_q1</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="n">Parameter</span><span class="p">(...)</span>
+<span class="bp">self</span><span class="p">.</span><span class="n">lambda_q2</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="n">Parameter</span><span class="p">(...)</span>
+<span class="bp">self</span><span class="p">.</span><span class="n">lambda_k1</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="n">Parameter</span><span class="p">(...)</span>
+<span class="bp">self</span><span class="p">.</span><span class="n">lambda_k2</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="n">Parameter</span><span class="p">(...)</span>
+<span class="bp">self</span><span class="p">.</span><span class="n">rmsnorm</span> <span class="o">=</span> <span class="n">nn</span><span class="p">.</span><span class="n">RMSNorm</span><span class="p">(</span>
+    <span class="n">normalized_shape</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="p">.</span><span class="n">hidden_size_per_attention_head</span><span class="p">,</span>
+    <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span>
+<span class="p">)</span>
+<span class="bp">self</span><span class="p">.</span><span class="n">_mark_param_as_need_tp_grad</span><span class="p">([</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">lambda_q1</span><span class="p">,</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">lambda_q2</span><span class="p">,</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">lambda_k1</span><span class="p">,</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">lambda_k2</span><span class="p">,</span>
+    <span class="bp">self</span><span class="p">.</span><span class="n">rmsnorm</span><span class="p">.</span><span class="n">weight</span>
+<span class="p">])</span>
+</code></pre></div></div>
+
+<p>In the forward pass, those vectors become the scalar that scales the second softmax map, and that map is subtracted from the first:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lambda_1</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">exp</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">lambda_q1</span> <span class="o">*</span> <span class="bp">self</span><span class="p">.</span><span class="n">lambda_k1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">).</span><span class="nb">float</span><span class="p">()).</span><span class="n">type_as</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="n">lambda_2</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">exp</span><span class="p">(</span><span class="n">torch</span><span class="p">.</span><span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="p">.</span><span class="n">lambda_q2</span> <span class="o">*</span> <span class="bp">self</span><span class="p">.</span><span class="n">lambda_k2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">).</span><span class="nb">float</span><span class="p">()).</span><span class="n">type_as</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+<span class="n">lambda_full</span> <span class="o">=</span> <span class="n">lambda_1</span> <span class="o">-</span> <span class="n">lambda_2</span> <span class="o">+</span> <span class="bp">self</span><span class="p">.</span><span class="n">lambda_init</span>
+</code></pre></div></div>
+
+<p>The subtraction operation is implemented as:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">attention_probs</span> <span class="o">=</span> <span class="n">attention_probs</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">lambda_full</span> <span class="o">*</span> <span class="n">attention_probs</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span>
+</code></pre></div></div>
+
+<p>Each tensor parallel rank only backpropagates through its own attention heads, so those gradients are partial and have to be summed across the tensor-parallel group before the optimizer step of each epoch.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">tp_group</span> <span class="o">=</span> <span class="n">parallel_state</span><span class="p">.</span><span class="n">get_tensor_model_parallel_group</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">tp_group</span><span class="p">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="p">.</span><span class="n">named_parameters</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s">"needs_tp_grad_sum"</span><span class="p">,</span> <span class="bp">False</span><span class="p">):</span>
+            <span class="n">grad</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s">"main_grad"</span><span class="p">,</span> <span class="n">param</span><span class="p">.</span><span class="n">grad</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="n">torch</span><span class="p">.</span><span class="n">distributed</span><span class="p">.</span><span class="n">all_reduce</span><span class="p">(</span>
+                    <span class="n">grad</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">torch</span><span class="p">.</span><span class="n">distributed</span><span class="p">.</span><span class="n">ReduceOp</span><span class="p">.</span><span class="n">SUM</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">tp_group</span>
+                <span class="p">)</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">DifferentialAttention</code> is the class you assign to <code class="language-plaintext highlighter-rouge">core_attention</code>. Megatron still owns the parallel projections, the optimizer, and the checkpoint. The only step you add is the all-reduce for the parameters it does not split across GPUs.</p>
+
+<p>To execute the script install the requirements.txt and run:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>torchrun <span class="nt">--nproc_per_node</span><span class="o">=</span>2 differential_attention.py
+</code></pre></div></div>
+
+<h2 id="final-remarks">Final remarks</h2>
+
+<p>If you liked this post, let me know by sending an email. Thanks!</p>
+
+  </div>
+</article>
+
+    </div>
+  </main>
+  <footer class="site-footer">
+  <div class="wrap">
+    <span>&copy; 2026 David Lobo</span>
+    <span><a href="mailto:davidlobobellon@gmail.com">davidlobobellon@gmail.com</a></span>
+  </div>
+</footer>
+
+  <script>
+    (function () {
+      var button = document.querySelector(".theme-toggle");
+      if (!button) return;
+
+      function sync(theme) {
+        var light = theme === "light";
+        if (light) document.documentElement.setAttribute("data-theme", "light");
+        else document.documentElement.removeAttribute("data-theme");
+        var scheme = document.getElementById("color-scheme");
+        var color = document.getElementById("theme-color");
+        if (scheme) scheme.setAttribute("content", theme);
+        if (color) color.setAttribute("content", light ? "#faf9f5" : "#0b0c0e");
+        button.setAttribute("aria-pressed", light ? "true" : "false");
+        button.setAttribute("aria-label", light ? "Switch to dark mode" : "Switch to light mode");
+      }
+
+      sync(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+      button.addEventListener("click", function () {
+        var next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+        try { localStorage.setItem("theme", next); } catch (e) {}
+        sync(next);
+      });
+    })();
+  </script>
+</body>
+</html>
