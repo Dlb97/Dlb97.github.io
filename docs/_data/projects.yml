@@ -1,3 +1,9 @@
+- title: Refusal Features
+  description: The project studies how Llama 3.2 1B Instruct refuses harmful requests and how supervised fine-tuning disconnects that refusal. It contains the code and the full technical report behind the blog post.
+  tags:
+    - LLMs
+  link_label: Repository
+  url: https://github.com/Dlb97/Refusal-Features
 - title: RLVR Pipeline
   description: The project studies whether larger language models demonstrate superior learning capabilities in mathematical reasoning when trained with RLHF. It replicates the training pipeline proposed in the DeepSeek-R1 paper with different model sizes from the Qwen/2.5 family. The study includes a technical report with the results.
   tags:
