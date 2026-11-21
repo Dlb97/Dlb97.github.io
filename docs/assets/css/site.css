@@ -771,23 +771,42 @@ html:not([data-theme="light"]) .post-body :is(h2, h3) {
 }
 
 .post-body img {
+  display: block;
   max-width: 100%;
   height: auto;
+  margin-block: var(--sp-lg);
   border-radius: var(--radius);
+}
+
+.post-body iframe {
+  display: block;
+  max-width: 100%;
+  margin-block: var(--sp-lg);
+}
+
+.post-body iframe.feature-frame {
+  width: calc(100vw - 2 * var(--gutter));
+  max-width: none;
+  margin-left: calc(50% - 50vw + var(--gutter));
 }
 
 .post-body .table-scroll {
   overflow-x: auto;
-  margin: 0 0 var(--sp-lg);
+  margin-block: var(--sp-lg);
   border-radius: var(--radius-sm);
 }
 
 .post-body table {
   border-collapse: collapse;
   width: 100%;
+  margin-block: var(--sp-lg);
   font-size: var(--text-md);
   line-height: var(--lh-snug);
   text-align: left;
+}
+
+.post-body .table-scroll table {
+  margin-block: 0;
 }
 
 .post-body :is(th, td) {

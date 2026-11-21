@@ -1,6 +1,10 @@
-# How fine-tuning switches off refusal in Llama 3.2 1B
-
-*A study of refusal features with sparse autoencoders.*
+---
+title: Refusal features
+date: 2026-11-20
+description: How Llama 3.2 1B refuses harmful requests, and how fine-tuning switches that off.
+tags:
+  - LLMs
+---
 
 ## 1. Objectives and why they matter
 
@@ -165,7 +169,7 @@ All three features fire on harmful requests, but they differ in where and how br
 
 **Feature 13698: harmful request, at the moment of answering.** It fires almost only on `\n\n`, the last token before the response, and only when the request before it is harmful. In its top examples, the request is mostly for explicit or abusive content. It is rare: it fires on 0.2% of the tokens of the corpus. The responses that follow it include both refusals and compliance, so it marks the situation the model is in rather than the answer it gives. This fits the ablation: removed alone, it barely changes refusal.
 
-<iframe src="{{ '/assets/dashboards/feature/13698.html' | relative_url }}" width="100%" height="620" loading="lazy" style="border:0"></iframe>
+<iframe class="feature-frame" src="{{ '/assets/dashboards/feature/13698.html' | relative_url }}" width="100%" height="620" loading="lazy" style="border:0"></iframe>
 
 The full contexts show the longer windows of text around the strongest activations of feature 13698, shaded the same way:
 
@@ -173,7 +177,7 @@ The full contexts show the longer windows of text around the strongest activatio
 
 **Feature 21744: a broad sense that something is wrong.** It fires on the template tokens after harmful requests, but also inside ordinary text: on sentences where a character knows they are doing something wrong, or where a request is described as going against ethical guidelines. It is the most common of the three (2.2% of tokens) and the only one with a clear effect when removed alone.
 
-<iframe src="{{ '/assets/dashboards/feature/21744.html' | relative_url }}" width="100%" height="620" loading="lazy" style="border:0"></iframe>
+<iframe class="feature-frame" src="{{ '/assets/dashboards/feature/21744.html' | relative_url }}" width="100%" height="620" loading="lazy" style="border:0"></iframe>
 
 The full contexts show the longer windows of text around the strongest activations of feature 21744, shaded the same way:
 
@@ -181,7 +185,7 @@ The full contexts show the longer windows of text around the strongest activatio
 
 **Feature 21238: request for an illegal or dangerous action.** It fires on all five template tokens after requests to commit crimes or cause harm, such as fraud, phishing, weapons or self-harm. It never fires on harmless prompts and is the rarest of the three (0.1% of tokens). In its top examples, the response that follows is almost always a refusal ("I'm sorry…"), which matches its role as the feature most tied to the decision to refuse.
 
-<iframe src="{{ '/assets/dashboards/feature/21238.html' | relative_url }}" width="100%" height="620" loading="lazy" style="border:0"></iframe>
+<iframe class="feature-frame" src="{{ '/assets/dashboards/feature/21238.html' | relative_url }}" width="100%" height="620" loading="lazy" style="border:0"></iframe>
 
 The full contexts show the longer windows of text around the strongest activations of feature 21238, shaded the same way:
 
