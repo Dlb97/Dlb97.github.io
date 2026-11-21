@@ -785,9 +785,9 @@ html:not([data-theme="light"]) .post-body :is(h2, h3) {
 }
 
 .post-body iframe.feature-frame {
-  width: calc(100vw - 2 * var(--gutter));
+  width: max(100%, calc(0.85 * (100vw - 2 * var(--gutter))));
   max-width: none;
-  margin-left: calc(50% - 50vw + var(--gutter));
+  margin-left: calc(50% - max(50%, 0.425 * (100vw - 2 * var(--gutter))));
 }
 
 .post-body .table-scroll {

@@ -21,14 +21,14 @@ Knowing where refusal lives inside the model, and what fine-tuning breaks, is a 
 
 We followed four steps:
 
+<iframe src="{{ '/assets/figures/pipeline.html' | relative_url }}" width="100%" height="250" loading="lazy" style="border:0"></iframe>
+
 1. Identify the refusal direction.
 2. Measure the effect of the refusal direction.
 3. Decompose the refusal direction into features.
 4. Test the feature impact on model refusal.
 
 Then we repeated the measurements on three fine-tuned versions of the model.
-
-<iframe src="{{ '/assets/figures/pipeline.html' | relative_url }}" width="100%" height="250" loading="lazy" style="border:0"></iframe>
 
 
 **Setup.** The model is `meta-llama/Llama-3.2-1B-Instruct`, which we call the original model. We evaluate it on three groups of prompts:
