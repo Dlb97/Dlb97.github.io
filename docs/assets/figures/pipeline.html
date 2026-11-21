@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>How the study works</title><style>
+.viz-root { color-scheme: light; --surface: #fcfcfb; --text-primary: #0b0b0b;
+  --text-secondary: #52514e; --grid: #e4e3df; --reference: #8a8984;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; }
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root { color-scheme: dark;
+    --surface: #1a1a19; --text-primary: #f0efec; --text-secondary: #c3c2b7;
+    --grid: #383835; --reference: #8f8e88; --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
+}
+:root[data-theme="dark"] .viz-root { color-scheme: dark; --surface: #1a1a19;
+  --text-primary: #f0efec; --text-secondary: #c3c2b7; --grid: #383835;
+  --reference: #8f8e88; --s1: #3987e5; --s2: #d95926; --s3: #199e70; }
+body { margin: 0; min-height: 100vh; }
+.viz-root { background: var(--surface); color: var(--text-primary); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  padding: 16px 20px; }
+.viz-root h1 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.viz-root p.sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 10px; }
+.viz-root svg text { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary);
+  margin: 2px 0 6px; flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px;
+  border-radius: 50%; margin-right: 6px; vertical-align: -1px; background: var(--key); }
+details { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+table { border-collapse: collapse; margin-top: 6px; }
+td, th { padding: 2px 10px 2px 0; text-align: left; font-weight: 400; }
+th { color: var(--text-primary); font-weight: 600; }
+.hit:hover + .mark, .mark:hover { opacity: 0.8; }
+</style></head><body class='viz-root'><h1>How the study works</h1><p class='sub'>The same four steps are applied to the original model, then to three fine-tuned versions.</p><svg viewBox='0 0 680 138' width='100%' role='img' aria-label='Four steps of the study'><rect x='10' y='10' width='150' height='118' rx='8' fill='none' stroke='var(--grid)' stroke-width='1.5'/><circle cx='28' cy='30' r='10' fill='var(--s1)'/><text x='28' y='34' font-size='11' font-weight='600' text-anchor='middle' fill='#ffffff'>1</text><foreignObject x='18' y='44' width='134' height='82'><div xmlns='http://www.w3.org/1999/xhtml' style='font:600 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;color:var(--text-primary)'>Identify the refusal direction<div style='font-weight:400;color:var(--text-secondary);margin-top:4px;font-size:11px'>mean harmful − mean harmless, layer 8</div></div></foreignObject><path d='M162,69.0 l10,0 m-4,-4 l4,4 l-4,4' fill='none' stroke='var(--text-secondary)' stroke-width='1.5' stroke-linecap='round'/><rect x='176' y='10' width='150' height='118' rx='8' fill='none' stroke='var(--grid)' stroke-width='1.5'/><circle cx='194' cy='30' r='10' fill='var(--s1)'/><text x='194' y='34' font-size='11' font-weight='600' text-anchor='middle' fill='#ffffff'>2</text><foreignObject x='184' y='44' width='134' height='82'><div xmlns='http://www.w3.org/1999/xhtml' style='font:600 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;color:var(--text-primary)'>Measure its effect<div style='font-weight:400;color:var(--text-secondary);margin-top:4px;font-size:11px'>ablation and steering, with random controls</div></div></foreignObject><path d='M328,69.0 l10,0 m-4,-4 l4,4 l-4,4' fill='none' stroke='var(--text-secondary)' stroke-width='1.5' stroke-linecap='round'/><rect x='342' y='10' width='150' height='118' rx='8' fill='none' stroke='var(--grid)' stroke-width='1.5'/><circle cx='360' cy='30' r='10' fill='var(--s1)'/><text x='360' y='34' font-size='11' font-weight='600' text-anchor='middle' fill='#ffffff'>3</text><foreignObject x='350' y='44' width='134' height='82'><div xmlns='http://www.w3.org/1999/xhtml' style='font:600 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;color:var(--text-primary)'>Decompose it into features<div style='font-weight:400;color:var(--text-secondary);margin-top:4px;font-size:11px'>SAE with 32,768 features</div></div></foreignObject><path d='M494,69.0 l10,0 m-4,-4 l4,4 l-4,4' fill='none' stroke='var(--text-secondary)' stroke-width='1.5' stroke-linecap='round'/><rect x='508' y='10' width='150' height='118' rx='8' fill='none' stroke='var(--grid)' stroke-width='1.5'/><circle cx='526' cy='30' r='10' fill='var(--s1)'/><text x='526' y='34' font-size='11' font-weight='600' text-anchor='middle' fill='#ffffff'>4</text><foreignObject x='516' y='44' width='134' height='82'><div xmlns='http://www.w3.org/1999/xhtml' style='font:600 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;color:var(--text-primary)'>Test the features&#x27; impact<div style='font-weight:400;color:var(--text-secondary);margin-top:4px;font-size:11px'>switch features off and on</div></div></foreignObject></svg><details><summary>Show data table</summary><table><tr><th>Step</th><th>What</th><th>How</th></tr><tr><td>1</td><td>Identify the refusal direction</td><td>mean harmful − mean harmless, layer 8</td></tr><tr><td>2</td><td>Measure its effect</td><td>ablation and steering, with random controls</td></tr><tr><td>3</td><td>Decompose it into features</td><td>SAE with 32,768 features</td></tr><tr><td>4</td><td>Test the features&#x27; impact</td><td>switch features off and on</td></tr></table></details></body></html>
